@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Playground & All-in-One Tools</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Custom Styles -->
+    <style>
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        body { background-color: #f8fafc; color: #1e293b; }
+        /* Custom Scrollbar for the menu */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- ICONS (SVG Components) ---
+        const IconBase = ({ size = 24, className = "", children }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>);
+        const Upload = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></IconBase>;
+        const FileImage = (p) => <IconBase {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><path d="m20 17-1.09-1.09a2 2 0 0 0-2.82 0L10 22"/></IconBase>;
+        const Download = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></IconBase>;
+        const AlertCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>;
+        const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+        const RefreshCw = (p) => <IconBase {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>;
+        const ArrowRight = (p) => <IconBase {...p}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></IconBase>;
+        const ChevronDown = (p) => <IconBase {...p}><polyline points="6 9 12 15 18 9"/></IconBase>;
+        const Home = (p) => <IconBase {...p}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></IconBase>;
+        const Wrench = (p) => <IconBase {...p}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></IconBase>;
+        const Maximize2 = (p) => <IconBase {...p}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></IconBase>;
+        const FileType = (p) => <IconBase {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13v-1h6v1"/><path d="M12 12v6"/><path d="M11 18h2"/></IconBase>;
+        const Wand2 = (p) => <IconBase {...p}><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></IconBase>;
+        const RotateCw = (p) => <IconBase {...p}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></IconBase>;
+        const Code = (p) => <IconBase {...p}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></IconBase>;
+        const Copy = (p) => <IconBase {...p}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></IconBase>;
+        const ImageIcon = (p) => <IconBase {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></IconBase>;
+        const Sparkles = (p) => <IconBase {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></IconBase>;
+        const Hash = (p) => <IconBase {...p}><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></IconBase>;
+        const AlignLeft = (p) => <IconBase {...p}><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></IconBase>;
+        const Search = (p) => <IconBase {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></IconBase>;
+        const Globe = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></IconBase>;
+        const QrCode = (p) => <IconBase {...p}><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></IconBase>;
+        const Palette = (p) => <IconBase {...p}><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></IconBase>;
+        const Smile = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></IconBase>;
+        const Type = (p) => <IconBase {...p}><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></IconBase>;
+        const Mail = (p) => <IconBase {...p}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></IconBase>;
+        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
+        const Utensils = (p) => <IconBase {...p}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></IconBase>;
+        const Lock = (p) => <IconBase {...p}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconBase>;
+        const FileText = (p) => <IconBase {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></IconBase>;
+        const Braces = (p) => <IconBase {...p}><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></IconBase>;
+        const Scale = (p) => <IconBase {...p}><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></IconBase>;
+
+        // --- HELPERS ---
+        const callGemini = async (prompt, useGrounding = false) => {
+            const apiKey = "AIzaSyDaDLK9yh_N7I3RkdXRuzTguiwfmrD6FOQ";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            if (useGrounding) payload.tools = [{ google_search: {} }];
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No content generated.";
+                } catch (err) { if (i === 2) return `Error: ${err.message}`; await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); }
+            }
+        };
+
+        const copyToClipboardHelper = (text) => {
+            const textArea = document.createElement("textarea"); textArea.value = text;
+            textArea.style.cssText = "position:fixed;top:0;left:0;opacity:0;"; document.body.appendChild(textArea);
+            textArea.focus(); textArea.select(); try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(textArea);
+        };
+
+        const formatBytes = (bytes) => { if (bytes === 0) return '0 Bytes'; const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]; };
+
+        // --- SHARED UI COMPONENTS ---
+        const FileUploader = ({ onFileSelect, label = "Select Image", icon: Icon = Upload, colorClass = "text-blue-600", bgClass = "bg-blue-100", borderClass="border-blue-500" }) => {
+            const [dragActive, setDragActive] = useState(false);
+            const handleDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(e.type === "dragenter" || e.type === "dragover"); };
+            const handleDrop = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); if(e.dataTransfer.files[0]) onFileSelect(e.dataTransfer.files[0]); };
+            return (
+                <div className={`relative group cursor-pointer transition-all duration-200 ease-in-out border-2 border-dashed rounded-xl p-8 text-center ${dragActive ? `${borderClass} bg-slate-50` : 'border-slate-300 hover:bg-slate-50'}`} onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop} onClick={() => document.getElementById('file-upload').click()}>
+                <input id="file-upload" type="file" className="hidden" onChange={(e) => e.target.files[0] && onFileSelect(e.target.files[0])} accept="image/*" />
+                <div className="flex flex-col items-center py-2"><div className={`${bgClass} p-3 rounded-full ${colorClass} mb-3`}><Icon size={24} /></div><p className="text-lg font-medium text-slate-700 mb-1">{label}</p><p className="text-slate-400 text-sm">Click or drag image here</p></div></div>
+            );
+        };
+        const ToolHeader = ({ title, description, icon: Icon, colorClass }) => (<div className="text-center mb-10 animate-fade-in"><h2 className="text-3xl font-extrabold text-slate-900 mb-2 flex items-center justify-center gap-3"><Icon size={32} className={colorClass} />{title}</h2><p className="text-slate-500 font-medium">{description}</p></div>);
+        const ResultArea = ({ content, loading, label = "Generated Result" }) => {
+            const [copied, setCopied] = useState(false);
+            const handleCopy = () => { copyToClipboardHelper(content); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+            return (
+                <div className="relative animate-fade-in"><label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
+                {loading ? <div className="w-full h-48 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-3"><RefreshCw className="animate-spin text-blue-500" size={24} /><span className="animate-pulse">Consulting AI...</span></div> : <div className="relative"><textarea readOnly value={content} className="w-full h-48 p-4 bg-slate-900 text-slate-300 text-sm font-mono rounded-xl resize-none focus:outline-none" /><button onClick={handleCopy} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg backdrop-blur-sm transition-all">{copied ? <CheckCircle size={16} className="text-green-400" /> : <Copy size={16} />}</button></div>}</div>
+            );
+        };
+
+        // ================= IMAGE TOOLS CODE =================
+
+        // 1. Image Resizer
+        const ImageResizerTool = () => {
+            const [file, setFile] = useState(null);
+            const [targetVal, setTargetVal] = useState(1);
+            const [unit, setUnit] = useState('MB');
+            const [processedUrl, setProcessedUrl] = useState(null);
+            const [finalSize, setFinalSize] = useState(0);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [error, setError] = useState('');
+
+            const forceResizeImage = async () => {
+                if (!file) return;
+                setIsProcessing(true); setError(''); setProcessedUrl(null);
+                setTimeout(async () => {
+                try {
+                    const targetBytes = unit === 'MB' ? targetVal * 1024 * 1024 : targetVal * 1024;
+                    if (targetBytes < 10 * 1024 || targetBytes > 100 * 1024 * 1024) throw new Error(`Please set a target size between 10 KB and 100 MB.`);
+                    
+                    let resultingBlob = null;
+                    if (targetBytes < file.size) {
+                    const bmp = await createImageBitmap(file);
+                    const canvas = document.createElement('canvas');
+                    let w = bmp.width, h = bmp.height, q = 0.9, s = 1, i = 0;
+                    const ctx = canvas.getContext('2d');
+                    while (i < 25) {
+                        canvas.width = w * s; canvas.height = h * s;
+                        ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+                        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
+                        if (blob.size <= targetBytes) { resultingBlob = blob; break; }
+                        if (q > 0.1) q -= 0.1; else { s *= 0.8; q = 0.7; }
+                        i++;
+                    }
+                    if (!resultingBlob) resultingBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.1)); 
+                    } else {
+                    const padding = new Blob([new Uint8Array(targetBytes - file.size)]);
+                    resultingBlob = new Blob([file, padding], { type: file.type });
+                    }
+                    setFinalSize(resultingBlob.size);
+                    setProcessedUrl(URL.createObjectURL(resultingBlob));
+                } catch (err) { setError(err.message); } finally { setIsProcessing(false); }
+                }, 50);
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto">
+                <ToolHeader title="Image Resizer" description="Force resize to exact size (10KB - 100MB)" icon={Maximize2} colorClass="text-orange-600" />
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+                    {!file ? <FileUploader onFileSelect={setFile} icon={Maximize2} colorClass="text-orange-600" bgClass="bg-orange-100" borderClass="border-orange-500" /> : (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
+                        <div className="flex items-center gap-3"><img src={URL.createObjectURL(file)} className="h-12 w-12 object-cover rounded" alt="" /> <div><p className="font-bold text-slate-700">{file.name}</p><p className="text-xs text-slate-500">{formatBytes(file.size)}</p></div></div>
+                        <button onClick={() => {setFile(null); setProcessedUrl(null);}} className="text-sm text-red-500 hover:underline">Remove</button>
+                        </div>
+                        <div className="flex items-end gap-4">
+                            <div className="flex-1"><label className="text-sm font-bold text-slate-700">Target Size</label><input type="number" value={targetVal} onChange={e => setTargetVal(e.target.value)} className="w-full p-3 border rounded-xl mt-1" /></div>
+                            <div className="flex-1"><label className="text-sm font-bold text-slate-700">Unit</label><div className="flex bg-slate-100 p-1 rounded-xl mt-1">{['KB', 'MB'].map(u => <button key={u} onClick={() => setUnit(u)} className={`flex-1 py-2 rounded-lg text-sm font-bold ${unit===u?'bg-white shadow text-orange-600':'text-slate-500'}`}>{u}</button>)}</div></div>
+                        </div>
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>}
+                        <div className="flex gap-3">
+                        <button onClick={forceResizeImage} disabled={isProcessing} className="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 disabled:opacity-50 flex justify-center items-center gap-2">
+                            {isProcessing && <RefreshCw className="animate-spin" size={18} />} {isProcessing ? 'Processing...' : 'Resize Image'}
+                        </button>
+                        {processedUrl && <a href={processedUrl} download={`resized-${file.name}`} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 flex justify-center items-center gap-2"><Download size={18} /> Save ({formatBytes(finalSize)})</a>}
+                        </div>
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        // 2. Image Converter
+        const ImageConverterTool = () => {
+            const [file, setFile] = useState(null);
+            const [format, setFormat] = useState('image/png');
+            const [processedUrl, setProcessedUrl] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            
+            const convertImage = async () => {
+                if (!file) return;
+                setIsProcessing(true); setProcessedUrl(null);
+                setTimeout(async () => {
+                const bmp = await createImageBitmap(file);
+                const canvas = document.createElement('canvas');
+                canvas.width = bmp.width; canvas.height = bmp.height;
+                const ctx = canvas.getContext('2d'); ctx.drawImage(bmp, 0, 0);
+                canvas.toBlob(blob => { setProcessedUrl(URL.createObjectURL(blob)); setIsProcessing(false); }, format, 0.9);
+                }, 50);
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto">
+                <ToolHeader title="Image Converter" description="Convert between JPG, PNG, and WEBP" icon={FileType} colorClass="text-purple-600" />
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+                    {!file ? <FileUploader onFileSelect={setFile} icon={FileType} colorClass="text-purple-600" bgClass="bg-purple-100" borderClass="border-purple-500" /> : (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
+                        <div className="flex items-center gap-3"><img src={URL.createObjectURL(file)} className="h-12 w-12 object-cover rounded" alt="" /> <div><p className="font-bold text-slate-700">{file.name}</p><p className="text-xs text-slate-500">{file.type}</p></div></div>
+                        <button onClick={() => {setFile(null); setProcessedUrl(null);}} className="text-sm text-red-500 hover:underline">Remove</button>
+                        </div>
+                        <div><label className="text-sm font-bold text-slate-700 block mb-2">Convert to:</label><div className="grid grid-cols-3 gap-2">{[ {l:'PNG', v:'image/png'}, {l:'JPG', v:'image/jpeg'}, {l:'WEBP', v:'image/webp'} ].map(f => (<button key={f.v} onClick={() => setFormat(f.v)} className={`py-3 rounded-xl font-bold border ${format === f.v ? 'bg-purple-50 border-purple-500 text-purple-700' : 'border-slate-200 hover:bg-slate-50'}`}>{f.l}</button>))}</div></div>
+                        <div className="flex gap-3">
+                        <button onClick={convertImage} disabled={isProcessing} className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 flex justify-center items-center gap-2">{isProcessing && <RefreshCw className="animate-spin" size={18} />} {isProcessing ? 'Converting...' : 'Convert'}</button>
+                        {processedUrl && <a href={processedUrl} download={`converted.${format.split('/')[1]}`} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 flex justify-center items-center gap-2"><Download size={18} /> Download</a>}
+                        </div>
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        // 3. Image Filters
+        const ImageFilterTool = () => {
+            const [file, setFile] = useState(null);
+            const [filter, setFilter] = useState('none');
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            useEffect(() => { if(file) setPreviewUrl(URL.createObjectURL(file)); }, [file]);
+
+            const applyFilter = () => {
+                setIsProcessing(true);
+                setTimeout(() => {
+                const canvas = document.createElement('canvas'); const img = new Image();
+                img.onload = () => {
+                    canvas.width = img.width; canvas.height = img.height; const ctx = canvas.getContext('2d');
+                    ctx.filter = { 'grayscale': 'grayscale(100%)', 'sepia': 'sepia(100%)', 'invert': 'invert(100%)', 'blur': 'blur(5px)', 'brightness': 'brightness(150%)', 'contrast': 'contrast(200%)' }[filter] || 'none';
+                    ctx.drawImage(img, 0, 0);
+                    const link = document.createElement('a'); link.download = `filtered-${file.name}`; link.href = canvas.toDataURL('image/jpeg'); link.click();
+                    setIsProcessing(false);
+                };
+                img.src = previewUrl;
+                }, 100);
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto">
+                <ToolHeader title="Image Filters" description="Apply artistic effects" icon={Wand2} colorClass="text-pink-600" />
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+                    {!file ? <FileUploader onFileSelect={setFile} icon={Wand2} colorClass="text-pink-600" bgClass="bg-pink-100" borderClass="border-pink-500" /> : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 bg-slate-100 rounded-xl p-4 flex items-center justify-center min-h-[300px]"><img src={previewUrl} style={{ filter: { 'grayscale': 'grayscale(100%)', 'sepia': 'sepia(100%)', 'invert': 'invert(100%)', 'blur': 'blur(5px)', 'brightness': 'brightness(150%)', 'contrast': 'contrast(200%)' }[filter] || 'none' }} className="max-h-[400px] max-w-full object-contain shadow-md" alt="Preview" /></div>
+                        <div className="space-y-4"><div className="flex items-center justify-between"><h3 className="font-bold text-slate-700">Select Filter</h3><button onClick={() => setFile(null)} className="text-xs text-red-500">Reset</button></div><div className="grid grid-cols-2 gap-2">{['none', 'grayscale', 'sepia', 'invert', 'blur', 'brightness', 'contrast'].map(f => (<button key={f} onClick={() => setFilter(f)} className={`py-2 text-sm capitalize rounded-lg border ${filter === f ? 'bg-pink-50 border-pink-500 text-pink-700 font-bold' : 'bg-white border-slate-200'}`}>{f}</button>))}</div><button onClick={applyFilter} disabled={isProcessing} className="w-full bg-pink-600 text-white py-3 rounded-xl font-bold hover:bg-pink-700 disabled:opacity-50 flex justify-center items-center gap-2">{isProcessing && <RefreshCw className="animate-spin" size={18} />} {isProcessing ? 'Processing...' : 'Download'}</button></div>
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        // 4. Image Rotator
+        const ImageRotatorTool = () => {
+            const [file, setFile] = useState(null);
+            const [rotation, setRotation] = useState(0);
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            useEffect(() => { if(file) setPreviewUrl(URL.createObjectURL(file)); }, [file]);
+
+            const saveRotated = () => {
+                setIsProcessing(true);
+                setTimeout(() => {
+                const canvas = document.createElement('canvas'); const img = new Image();
+                img.onload = () => {
+                    if (rotation % 180 === 0) { canvas.width = img.width; canvas.height = img.height; } else { canvas.width = img.height; canvas.height = img.width; }
+                    const ctx = canvas.getContext('2d'); ctx.translate(canvas.width/2, canvas.height/2); ctx.rotate(rotation * Math.PI / 180); ctx.drawImage(img, -img.width/2, -img.height/2);
+                    const link = document.createElement('a'); link.download = `rotated-${file.name}`; link.href = canvas.toDataURL(file.type); link.click();
+                    setIsProcessing(false);
+                };
+                img.src = previewUrl;
+                }, 100);
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto">
+                <ToolHeader title="Image Rotator" description="Rotate your images 90 degrees" icon={RotateCw} colorClass="text-indigo-600" />
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+                    {!file ? <FileUploader onFileSelect={setFile} icon={RotateCw} colorClass="text-indigo-600" bgClass="bg-indigo-100" borderClass="border-indigo-500" /> : (
+                    <div className="space-y-6">
+                        <div className="flex justify-center bg-slate-100 p-8 rounded-xl overflow-hidden"><img src={previewUrl} style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 0.3s ease' }} className="max-h-64 object-contain" alt="Rotated" /></div>
+                        <div className="flex gap-3"><button onClick={() => setRotation(p => (p + 90) % 360)} className="flex-1 bg-white border-2 border-indigo-100 text-indigo-600 py-3 rounded-xl font-bold hover:bg-indigo-50 flex justify-center items-center gap-2"><RotateCw size={18} /> Rotate 90°</button><button onClick={saveRotated} disabled={isProcessing} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex justify-center items-center gap-2">{isProcessing && <RefreshCw className="animate-spin" size={18} />} {isProcessing ? 'Saving...' : 'Save Image'}</button></div>
+                        <button onClick={() => {setFile(null); setRotation(0);}} className="w-full text-slate-400 hover:text-slate-600 text-sm">Cancel & Upload New</button>
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        // 5. Base64 Encoder
+        const Base64Tool = () => {
+            const [file, setFile] = useState(null); 
+            const [base64, setBase64] = useState(''); 
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [copied, setCopied] = useState(false);
+
+            const handleFile = (f) => { setFile(f); setIsProcessing(true); const r = new FileReader(); r.onloadend = () => { setBase64(r.result); setIsProcessing(false); }; r.readAsDataURL(f); };
+            
+            const copyToClipboard = () => {
+                copyToClipboardHelper(base64);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto">
+                <ToolHeader title="Image to Base64" description="Convert image to text" icon={Code} colorClass="text-slate-600" />
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+                    {!file ? <FileUploader onFileSelect={handleFile} icon={Code} colorClass="text-slate-600" bgClass="bg-slate-100" borderClass="border-slate-500" /> : (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><img src={URL.createObjectURL(file)} className="h-10 w-10 object-cover rounded" alt="" /><span className="font-bold text-slate-700 truncate">{file.name}</span></div>
+                        <div className="relative">
+                        {isProcessing ? (
+                            <div className="w-full h-48 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 gap-2"><RefreshCw className="animate-spin" /> Generating...</div> 
+                        ) : (
+                            <textarea readOnly value={base64} className="w-full h-48 p-4 bg-slate-900 text-slate-300 text-xs font-mono rounded-xl resize-none focus:outline-none" />
+                        )}
+                        <button onClick={copyToClipboard} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg backdrop-blur-sm transition-all">
+                            {copied ? <CheckCircle size={16} className="text-green-400" /> : <Copy size={16} />}
+                        </button>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-slate-500"><span>{base64.length.toLocaleString()} chars</span><button onClick={() => {setFile(null); setBase64('');}} className="text-red-500 hover:underline">Clear</button></div>
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        // 6. Base64 to Image
+        const Base64ToImageTool = () => {
+            const [inputStr, setInputStr] = useState(''); const [imageUrl, setImageUrl] = useState(null); const [error, setError] = useState(''); const [isProcessing, setIsProcessing] = useState(false);
+            const convertToImage = () => { setError(''); setImageUrl(null); if (!inputStr.trim()) return; setIsProcessing(true); setTimeout(() => { const str = inputStr.trim(); if (str.length < 10) { setError('Invalid string'); setIsProcessing(false); return; } const img = new Image(); img.onload = () => { setImageUrl(str.startsWith('data:image') ? str : `data:image/png;base64,${str}`); setIsProcessing(false); }; img.onerror = () => { setError('Corrupt data'); setIsProcessing(false); }; img.src = str.startsWith('data:image') ? str : `data:image/png;base64,${str}`; }, 500); };
+            return (
+                <div className="max-w-2xl mx-auto">
+                <ToolHeader title="Base64 to Image" description="Decode text to image" icon={ImageIcon} colorClass="text-emerald-600" />
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200 space-y-4">
+                    <textarea value={inputStr} onChange={(e) => setInputStr(e.target.value)} placeholder="Paste Base64 string..." className="w-full h-48 p-4 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-mono rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
+                    <button onClick={convertToImage} disabled={!inputStr || isProcessing} className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex justify-center items-center gap-2">{isProcessing && <RefreshCw className="animate-spin" size={18} />} {isProcessing ? 'Decoding...' : 'Convert'}</button>
+                    {imageUrl && !isProcessing && (<div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in"><div className="flex justify-center mb-4"><img src={imageUrl} className="max-h-64 max-w-full object-contain rounded shadow-sm bg-white" alt="Decoded" /></div><a href={imageUrl} download="decoded.png" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 flex justify-center items-center gap-2"><Download size={18} /> Download</a></div>)}
+                </div>
+                </div>
+            );
+        };
+
+        // ================= DESIGN TOOLS CODE =================
+
+        // 7. QR Code
+        const QrCodeTool = () => {
+            const [text, setText] = useState(''); const [qrUrl, setQrUrl] = useState(''); const [loading, setLoading] = useState(false);
+            const generate = () => { if(!text) return; setLoading(true); setTimeout(() => { setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`); setLoading(false); }, 500); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="QR Generator" description="Generate QR for any link/text" icon={QrCode} colorClass="text-slate-700" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><input value={text} onChange={e=>setText(e.target.value)} placeholder="Enter URL or Text..." className="w-full p-3 border rounded-xl" /><button onClick={generate} disabled={loading||!text} className="w-full bg-slate-700 text-white py-3 rounded-xl font-bold">{loading?'Generating...':'Create QR'}</button>{qrUrl && !loading && <div className="flex flex-col items-center p-4 bg-slate-50 rounded-xl"><img src={qrUrl} className="mb-4 shadow-lg rounded" /><a href={qrUrl} download="qr-code.png" className="text-blue-600 hover:underline">Download QR</a></div>}</div></div>);
+        };
+
+        // 8. Meme Generator
+        const MemeGeneratorTool = () => {
+            const [file, setFile] = useState(null); const [topText, setTopText] = useState(''); const [bottomText, setBottomText] = useState(''); const [preview, setPreview] = useState(null); const [loading, setLoading] = useState(false);
+            const generate = () => {
+                if(!file) return; setLoading(true); const canvas = document.createElement('canvas'); const img = new Image(); img.onload = () => {
+                    canvas.width = img.width; canvas.height = img.height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    ctx.font = `bold ${img.width/10}px Impact`; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = img.width/100; ctx.textAlign = 'center';
+                    if(topText) { ctx.fillText(topText.toUpperCase(), img.width/2, img.height*0.15); ctx.strokeText(topText.toUpperCase(), img.width/2, img.height*0.15); }
+                    if(bottomText) { ctx.fillText(bottomText.toUpperCase(), img.width/2, img.height*0.9); ctx.strokeText(bottomText.toUpperCase(), img.width/2, img.height*0.9); }
+                    setPreview(canvas.toDataURL()); setLoading(false);
+                }; img.src = URL.createObjectURL(file);
+            };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Meme Generator" description="Create funny memes" icon={Smile} colorClass="text-pink-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4">{!file ? <FileUploader onFileSelect={setFile} icon={Smile} /> : <div className="space-y-4"><div className="flex gap-2"><input value={topText} onChange={e=>setTopText(e.target.value)} placeholder="Top Text" className="w-full p-3 border rounded-xl" /><input value={bottomText} onChange={e=>setBottomText(e.target.value)} placeholder="Bottom Text" className="w-full p-3 border rounded-xl" /></div><button onClick={generate} disabled={loading} className="w-full bg-pink-500 text-white py-3 rounded-xl font-bold">{loading?'Rendering...':'Generate Meme'}</button>{preview && <div className="text-center"><img src={preview} className="max-h-96 mx-auto rounded shadow-lg mb-2"/><a href={preview} download="meme.png" className="text-blue-600 font-bold hover:underline">Download Meme</a><button onClick={()=>setFile(null)} className="block w-full text-slate-400 mt-2 text-xs">Reset</button></div>}</div>}</div></div>);
+        };
+
+        // 9. Color Palette
+        const ColorPaletteTool = () => {
+            const [file, setFile] = useState(null); const [colors, setColors] = useState([]); const [loading, setLoading] = useState(false);
+            const extract = (f) => {
+                setFile(f); setLoading(true); const img = new Image(); img.onload = () => {
+                    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 100; canvas.height = 100;
+                    ctx.drawImage(img, 0, 0, 100, 100); const data = ctx.getImageData(0,0,100,100).data; const map = {};
+                    for(let i=0; i<data.length; i+=40) { // sample pixels
+                        const rgb = `${data[i]},${data[i+1]},${data[i+2]}`; map[rgb] = (map[rgb] || 0) + 1;
+                    }
+                    const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0].split(','));
+                    setColors(sorted.map(c => `rgb(${c[0]},${c[1]},${c[2]})`)); setLoading(false);
+                }; img.src = URL.createObjectURL(f);
+            };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Color Palette" description="Extract colors from image" icon={Palette} colorClass="text-indigo-500" /><div className="bg-white rounded-2xl shadow-xl p-6">{!file ? <FileUploader onFileSelect={extract} icon={Palette} /> : <div><div className="flex justify-center mb-6"><img src={URL.createObjectURL(file)} className="h-48 object-contain rounded" /></div><div className="grid grid-cols-3 gap-4">{loading ? <p>Analyzing...</p> : colors.map((c,i) => <div key={i} className="h-20 rounded-xl shadow flex items-center justify-center text-xs font-bold text-white shadow-sm" style={{backgroundColor:c, textShadow:'0 0 2px black'}}>{c}</div>)}</div><button onClick={()=>setFile(null)} className="w-full mt-6 text-slate-500 hover:text-red-500">Reset</button></div>}</div></div>);
+        };
+
+        // ================= AI WRITING TOOLS CODE =================
+
+        // 10. Grammar Fixer
+        const GrammarTool = () => {
+            const [text, setText] = useState(''); const [res, setRes] = useState(''); const [loading, setLoading] = useState(false);
+            const run = async () => { if(!text) return; setLoading(true); setRes(await callGemini(`Fix grammar and spelling errors in this text, keep tone same: "${text}"`)); setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Grammar Fixer" description="Correct spelling & grammar" icon={Type} colorClass="text-green-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Paste text here..." className="w-full h-32 p-3 border rounded-xl" /><button onClick={run} disabled={loading||!text} className="w-full bg-green-500 text-white py-3 rounded-xl font-bold">{loading?'Fixing...':'Fix Grammar'}</button>{res && <ResultArea content={res} loading={loading}/>}</div></div>);
+        };
+
+        // 11. Email Writer
+        const EmailTool = () => {
+            const [topic, setTopic] = useState(''); const [res, setRes] = useState(''); const [loading, setLoading] = useState(false);
+            const run = async () => { if(!topic) return; setLoading(true); setRes(await callGemini(`Write a professional email about: "${topic}". Include Subject line.`)); setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Email Writer" description="Draft professional emails" icon={Mail} colorClass="text-blue-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="e.g. Leave application for sick day" className="w-full p-3 border rounded-xl" /><button onClick={run} disabled={loading||!topic} className="w-full bg-blue-500 text-white py-3 rounded-xl font-bold">{loading?'Writing...':'Generate Email'}</button>{res && <ResultArea content={res} loading={loading}/>}</div></div>);
+        };
+
+        // 12. Caption Gen
+        const CaptionTool = () => {
+            const [topic, setTopic] = useState(''); const [res, setRes] = useState(''); const [loading, setLoading] = useState(false);
+            const run = async () => { if(!topic) return; setLoading(true); setRes(await callGemini(`Write 5 engaging Instagram captions with emojis for a photo about: "${topic}"`)); setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Caption Gen" description="Social media captions" icon={MessageSquare} colorClass="text-pink-600" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="e.g. Sunset at the beach" className="w-full p-3 border rounded-xl" /><button onClick={run} disabled={loading||!topic} className="w-full bg-pink-600 text-white py-3 rounded-xl font-bold">{loading?'Creating...':'Generate Captions'}</button>{res && <ResultArea content={res} loading={loading}/>}</div></div>);
+        };
+
+        // 13. Recipe Gen
+        const RecipeTool = () => {
+            const [ing, setIng] = useState(''); const [res, setRes] = useState(''); const [loading, setLoading] = useState(false);
+            const run = async () => { if(!ing) return; setLoading(true); setRes(await callGemini(`Suggest a recipe using these ingredients: "${ing}". Include step by step instructions.`)); setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Recipe Chef" description="Cook with what you have" icon={Utensils} colorClass="text-orange-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><input value={ing} onChange={e=>setIng(e.target.value)} placeholder="e.g. Chicken, onions, tomato, yogurt" className="w-full p-3 border rounded-xl" /><button onClick={run} disabled={loading||!ing} className="w-full bg-orange-500 text-white py-3 rounded-xl font-bold">{loading?'Cooking...':'Get Recipe'}</button>{res && <ResultArea content={res} loading={loading}/>}</div></div>);
+        };
+
+        // ================= SEO TOOLS CODE =================
+
+        // 14. YT Tags
+        const YTTagGenerator = () => {
+            const [topic, setTopic] = useState(''); const [result, setResult] = useState(''); const [loading, setLoading] = useState(false);
+            const generate = async () => { if(!topic) return; setLoading(true); try { const prompt = `Generate 15 highly relevant, high-volume YouTube tags for a video about "${topic}". Return them as a comma-separated list.`; const text = await callGemini(prompt); setResult(text); } catch(e) { setResult("Error"); } setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="YT Tag Generator" description="Get high-ranking tags for your videos" icon={Sparkles} colorClass="text-yellow-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-6"><input value={topic} onChange={e=>setTopic(e.target.value)} className="w-full p-3 border rounded-xl" placeholder="e.g., How to make paneer" /><button onClick={generate} disabled={loading||!topic} className="w-full bg-yellow-500 text-white py-3 rounded-xl font-bold">{loading?'Generating...':'Generate Tags'}</button>{result && <ResultArea content={result} loading={loading} />}</div></div>);
+        };
+
+        // 15. YT Hashtags
+        const YTHashtagGenerator = () => {
+            const [topic, setTopic] = useState(''); const [result, setResult] = useState(''); const [loading, setLoading] = useState(false);
+            const generate = async () => { if(!topic) return; setLoading(true); try { const prompt = `Generate 10 viral YouTube Shorts hashtags for: "${topic}".`; const text = await callGemini(prompt); setResult(text); } catch(e) { setResult("Error"); } setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="YT Hashtags" description="Viral hashtags for Shorts" icon={Hash} colorClass="text-red-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-6"><input value={topic} onChange={e=>setTopic(e.target.value)} className="w-full p-3 border rounded-xl" placeholder="e.g., Funny cats" /><button onClick={generate} disabled={loading||!topic} className="w-full bg-red-500 text-white py-3 rounded-xl font-bold">{loading?'Generating...':'Generate Hashtags'}</button>{result && <ResultArea content={result} loading={loading} />}</div></div>);
+        };
+
+        // 16. YT Description
+        const YTDescriptionGenerator = () => {
+            const [title, setTitle] = useState(''); const [result, setResult] = useState(''); const [loading, setLoading] = useState(false);
+            const generate = async () => { if(!title) return; setLoading(true); try { const prompt = `Write a professional YouTube description for video: "${title}". Include hook, summary, and CTA.`; const text = await callGemini(prompt); setResult(text); } catch(e) { setResult("Error"); } setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="YT Description" description="SEO-optimized descriptions" icon={AlignLeft} colorClass="text-blue-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-6"><input value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-3 border rounded-xl" placeholder="Video Title" /><button onClick={generate} disabled={loading||!title} className="w-full bg-blue-500 text-white py-3 rounded-xl font-bold">{loading?'Writing...':'Generate Description'}</button>{result && <ResultArea content={result} loading={loading} />}</div></div>);
+        };
+
+        // 17. Thumbnail Prompt
+        const ThumbnailPromptGenerator = () => {
+            const [title, setTitle] = useState(''); const [result, setResult] = useState(''); const [loading, setLoading] = useState(false);
+            const generate = async () => { if(!title) return; setLoading(true); try { const prompt = `Write a text-to-image prompt for a YouTube thumbnail for video: "${title}". Describe visual elements clearly in one paragraph.`; const text = await callGemini(prompt, true); setResult(text); } catch(e) { setResult("Error"); } setLoading(false); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Thumbnail Prompt" description="AI Art prompts" icon={Search} colorClass="text-purple-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-6"><input value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-3 border rounded-xl" placeholder="Video Title" /><button onClick={generate} disabled={loading||!title} className="w-full bg-purple-500 text-white py-3 rounded-xl font-bold">{loading?'Thinking...':'Generate Prompt'}</button>{result && <ResultArea content={result} loading={loading} />}</div></div>);
+        };
+
+        // ================= UTILITY TOOLS CODE =================
+
+        // 18. Password Gen
+        const PasswordTool = () => {
+            const [len, setLen] = useState(12); const [pass, setPass] = useState('');
+            const generate = () => { const c="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"; let p=""; for(let i=0;i<len;i++) p+=c[Math.floor(Math.random()*c.length)]; setPass(p); };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Password Gen" description="Create strong passwords" icon={Lock} colorClass="text-emerald-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-6"><div className="flex justify-between font-bold"><span>Length: {len}</span><input type="range" min="8" max="32" value={len} onChange={e=>setLen(e.target.value)} /></div><button onClick={generate} className="w-full bg-emerald-500 text-white py-3 rounded-xl font-bold">Generate New</button>{pass && <div className="bg-slate-100 p-4 rounded-xl text-center font-mono text-xl tracking-wider select-all cursor-pointer" onClick={()=>copyToClipboardHelper(pass)}>{pass}</div>}</div></div>);
+        };
+
+        // 19. Word Counter
+        const WordCountTool = () => {
+            const [text, setText] = useState(''); 
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Word Counter" description="Count words & chars" icon={FileText} colorClass="text-cyan-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Type here..." className="w-full h-48 p-4 border rounded-xl" /><div className="flex gap-4 text-center"><div className="flex-1 bg-cyan-50 p-4 rounded-xl"><p className="text-2xl font-bold text-cyan-600">{text.split(/\s+/).filter(w=>w).length}</p><p className="text-xs text-cyan-800">Words</p></div><div className="flex-1 bg-cyan-50 p-4 rounded-xl"><p className="text-2xl font-bold text-cyan-600">{text.length}</p><p className="text-xs text-cyan-800">Chars</p></div></div></div></div>);
+        };
+
+        // 20. JSON Tool
+        const JsonTool = () => {
+            const [text, setText] = useState(''); const [err, setErr] = useState('');
+            const format = () => { try { setText(JSON.stringify(JSON.parse(text), null, 2)); setErr(''); } catch(e) { setErr('Invalid JSON'); } };
+            const minify = () => { try { setText(JSON.stringify(JSON.parse(text))); setErr(''); } catch(e) { setErr('Invalid JSON'); } };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="JSON Formatter" description="Prettify or Minify JSON" icon={Braces} colorClass="text-yellow-600" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-4"><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Paste JSON..." className="w-full h-48 p-4 border rounded-xl font-mono text-xs" /><div className="flex gap-2"><button onClick={format} className="flex-1 bg-yellow-600 text-white py-2 rounded-xl font-bold">Prettify</button><button onClick={minify} className="flex-1 bg-slate-600 text-white py-2 rounded-xl font-bold">Minify</button></div>{err && <p className="text-red-500 text-center">{err}</p>}</div></div>);
+        };
+
+        // 21. Unit Converter
+        const UnitTool = () => {
+            const [val, setVal] = useState(1); const [type, setType] = useState('km-mile'); 
+            const calc = () => {
+                if(type==='km-mile') return `${(val*0.621371).toFixed(3)} Miles`;
+                if(type==='mile-km') return `${(val*1.60934).toFixed(3)} KM`;
+                if(type==='kg-lb') return `${(val*2.20462).toFixed(3)} Lbs`;
+                if(type==='lb-kg') return `${(val*0.453592).toFixed(3)} Kg`;
+                if(type==='c-f') return `${((val*9/5)+32).toFixed(1)} °F`;
+            };
+            return (<div className="max-w-2xl mx-auto"><ToolHeader title="Unit Converter" description="Length, Weight, Temp" icon={Scale} colorClass="text-violet-500" /><div className="bg-white rounded-2xl shadow-xl p-6 space-y-6"><div className="flex gap-4"><input type="number" value={val} onChange={e=>setVal(e.target.value)} className="flex-1 p-3 border rounded-xl" /><select value={type} onChange={e=>setType(e.target.value)} className="flex-1 p-3 border rounded-xl"><option value="km-mile">KM to Miles</option><option value="mile-km">Miles to KM</option><option value="kg-lb">KG to Lbs</option><option value="lb-kg">Lbs to KG</option><option value="c-f">Celsius to Fahr</option></select></div><div className="bg-violet-50 p-6 rounded-xl text-center"><p className="text-3xl font-bold text-violet-700">{calc()}</p></div></div></div>);
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+            const [view, setView] = useState('home');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const navigate = (v) => { setView(v); setIsMenuOpen(false); };
+            
+            const ToolCard = ({t}) => (
+                <div onClick={() => setView(t.id)} className={`group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl border border-slate-200 hover:border-${t.c}-300 cursor-pointer transition-all duration-300 hover:-translate-y-1`}>
+                    <div className={`h-12 w-12 bg-${t.c}-100 rounded-xl flex items-center justify-center text-${t.c}-600 mb-4 group-hover:scale-110 transition-transform`}><t.i size={24} /></div>
+                    <h3 className={`text-xl font-bold text-slate-900 mb-2 group-hover:text-${t.c}-600`}>{t.l}</h3><p className="text-slate-500 text-sm mb-4">{t.d}</p>
+                    <div className={`flex items-center text-${t.c}-600 font-medium text-sm`}>Open Tool <ArrowRight size={16} className="ml-1 group-hover:translate-x-1" /></div>
+                </div>
+            );
+
+            // DATA: All Tools List
+            const imgTools = [
+                {id:'resizer', l:'Resizer', d:'Force resize KB/MB', i:Maximize2, c:'orange'},
+                {id:'converter', l:'Converter', d:'Format changer', i:FileType, c:'purple'},
+                {id:'filters', l:'Filters', d:'Effects & edits', i:Wand2, c:'pink'},
+                {id:'rotator', l:'Rotator', d:'Rotate & flip', i:RotateCw, c:'indigo'},
+                {id:'base64', l:'Img to Text', d:'Base64 Encoder', i:Code, c:'slate'},
+                {id:'base64toimg', l:'Text to Img', d:'Base64 Decoder', i:ImageIcon, c:'emerald'}
+            ];
+            const designTools = [
+                {id:'qrcode', l:'QR Generator', d:'Create QR Codes', i:QrCode, c:'slate'},
+                {id:'meme', l:'Meme Maker', d:'Add funny text', i:Smile, c:'pink'},
+                {id:'palette', l:'Palette', d:'Get image colors', i:Palette, c:'indigo'}
+            ];
+            const aiWriteTools = [
+                {id:'grammar', l:'Grammar Fix', d:'Correct errors', i:Type, c:'green'},
+                {id:'email', l:'Email Writer', d:'Draft emails', i:Mail, c:'blue'},
+                {id:'caption', l:'Captions', d:'Insta/FB captions', i:MessageSquare, c:'pink'},
+                {id:'recipe', l:'Recipe Gen', d:'Cooking ideas', i:Utensils, c:'orange'}
+            ];
+            const seoTools = [
+                {id:'yttags', l:'YT Tags', d:'SEO Tags', i:Sparkles, c:'yellow'},
+                {id:'ythash', l:'Hashtags', d:'Viral tags', i:Hash, c:'red'},
+                {id:'ytdesc', l:'Description', d:'Video summaries', i:AlignLeft, c:'blue'},
+                {id:'thumbprompt', l:'Prompt Gen', d:'AI Art prompts', i:Search, c:'purple'}
+            ];
+            const utilTools = [
+                {id:'password', l:'Password Gen', d:'Secure passwords', i:Lock, c:'emerald'},
+                {id:'wordcount', l:'Word Counter', d:'Count text', i:FileText, c:'cyan'},
+                {id:'json', l:'JSON Tool', d:'Format/Minify', i:Braces, c:'yellow'},
+                {id:'unit', l:'Converter', d:'Units calc', i:Scale, c:'violet'}
+            ];
+
+            return (
+                <div className="min-h-screen font-sans selection:bg-blue-200">
+                <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+                    <div className="max-w-6xl mx-auto px-4"><div className="flex justify-between items-center h-16">
+                        <div className="flex items-center gap-2 font-black text-xl tracking-tight cursor-pointer text-slate-900 hover:text-blue-600" onClick={() => setView('home')}>
+                        <div className="bg-blue-600 text-white p-1.5 rounded-lg"><Wrench size={20} /></div>All-In-One Tools
+                        </div>
+                        <div className="flex items-center gap-6">
+                        <button onClick={() => setView('home')} className={`hidden md:flex items-center gap-2 text-sm font-medium ${view === 'home' ? 'text-blue-600' : 'text-slate-600'}`}><Home size={18} />Home</button>
+                        <div className="relative">
+                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg ${view !== 'home' || isMenuOpen ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100'}`}><Wrench size={18} />Menu<ChevronDown size={14} /></button>
+                            {isMenuOpen && (
+                            <>
+                                <div className="fixed inset-0" onClick={() => setIsMenuOpen(false)}></div>
+                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-20 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                {[
+                                    {t:'Image Tools', l:imgTools}, {t:'Design Tools', l:designTools}, 
+                                    {t:'AI Writing', l:aiWriteTools}, {t:'SEO Tools', l:seoTools}, {t:'Utilities', l:utilTools}
+                                ].map((cat, idx) => (
+                                    <React.Fragment key={idx}>
+                                        <div className="px-4 py-2 bg-slate-50 border-b border-t text-xs font-bold text-slate-500 uppercase sticky top-0">{cat.t}</div>
+                                        {cat.l.map(t => (
+                                            <button key={t.id} onClick={() => navigate(t.id)} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50 last:border-0">
+                                            <div className={`p-1.5 bg-${t.c}-100 text-${t.c}-600 rounded-lg`}><t.i size={16} /></div><span className="text-sm font-medium text-slate-700">{t.l}</span>
+                                            </button>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                                </div>
+                            </>
+                            )}
+                        </div>
+                        </div>
+                    </div></div>
+                </nav>
+                <main className="max-w-6xl mx-auto px-4 py-8">
+                    {view === 'home' && (
+                         <div className="max-w-6xl mx-auto animate-fade-in pb-20">
+                            <div className="text-center mb-12"><h1 className="text-5xl font-black text-slate-900 mb-4 tracking-tight">Super <span className="text-blue-600">Toolkit</span></h1><p className="text-xl text-slate-600">20+ Free Tools for Images, Writing, SEO & Dev.</p></div>
+                            {[
+                                {t:'🎨 Image Tools', l:imgTools}, {t:'🖌️ Design & Creation', l:designTools}, 
+                                {t:'✨ AI Writing & Content', l:aiWriteTools}, {t:'🚀 SEO & Growth', l:seoTools}, {t:'🛠️ Dev & Utilities', l:utilTools}
+                            ].map((cat,i) => (
+                                <div key={i} className="mb-12"><h2 className="text-2xl font-bold text-slate-800 mb-6">{cat.t}</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{cat.l.map(tool => <ToolCard key={tool.id} t={tool} />)}</div></div>
+                            ))}
+                         </div>
+                    )}
+                    
+                    {/* RENDER ACTIVE TOOL */}
+                    {view === 'resizer' && <ImageResizerTool />}
+                    {view === 'converter' && <ImageConverterTool />}
+                    {view === 'filters' && <ImageFilterTool />}
+                    {view === 'rotator' && <ImageRotatorTool />}
+                    {view === 'base64' && <Base64Tool />}
+                    {view === 'base64toimg' && <Base64ToImageTool />}
+                    
+                    {view === 'qrcode' && <QrCodeTool />}
+                    {view === 'meme' && <MemeGeneratorTool />}
+                    {view === 'palette' && <ColorPaletteTool />}
+
+                    {view === 'grammar' && <GrammarTool />}
+                    {view === 'email' && <EmailTool />}
+                    {view === 'caption' && <CaptionTool />}
+                    {view === 'recipe' && <RecipeTool />}
+
+                    {view === 'yttags' && <YTTagGenerator />}
+                    {view === 'ythash' && <YTHashtagGenerator />}
+                    {view === 'ytdesc' && <YTDescriptionGenerator />}
+                    {view === 'thumbprompt' && <ThumbnailPromptGenerator />}
+
+                    {view === 'password' && <PasswordTool />}
+                    {view === 'wordcount' && <WordCountTool />}
+                    {view === 'json' && <JsonTool />}
+                    {view === 'unit' && <UnitTool />}
+                </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
